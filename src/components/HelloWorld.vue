@@ -1,58 +1,125 @@
 <template>
-  <div class="hello">
-    <h1>{{ msg }}</h1>
-    <p>
-      For a guide and recipes on how to configure / customize this project,<br>
-      check out the
-      <a href="https://cli.vuejs.org" target="_blank" rel="noopener">vue-cli documentation</a>.
-    </p>
-    <h3>Installed CLI Plugins</h3>
-    <ul>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-babel" target="_blank" rel="noopener">babel</a></li>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-eslint" target="_blank" rel="noopener">eslint</a></li>
-    </ul>
-    <h3>Essential Links</h3>
-    <ul>
-      <li><a href="https://vuejs.org" target="_blank" rel="noopener">Core Docs</a></li>
-      <li><a href="https://forum.vuejs.org" target="_blank" rel="noopener">Forum</a></li>
-      <li><a href="https://chat.vuejs.org" target="_blank" rel="noopener">Community Chat</a></li>
-      <li><a href="https://twitter.com/vuejs" target="_blank" rel="noopener">Twitter</a></li>
-      <li><a href="https://news.vuejs.org" target="_blank" rel="noopener">News</a></li>
-    </ul>
-    <h3>Ecosystem</h3>
-    <ul>
-      <li><a href="https://router.vuejs.org" target="_blank" rel="noopener">vue-router</a></li>
-      <li><a href="https://vuex.vuejs.org" target="_blank" rel="noopener">vuex</a></li>
-      <li><a href="https://github.com/vuejs/vue-devtools#vue-devtools" target="_blank" rel="noopener">vue-devtools</a></li>
-      <li><a href="https://vue-loader.vuejs.org" target="_blank" rel="noopener">vue-loader</a></li>
-      <li><a href="https://github.com/vuejs/awesome-vue" target="_blank" rel="noopener">awesome-vue</a></li>
-    </ul>
-  </div>
+  <v-container>
+    <v-row>
+      <v-col cols="12" v-for="(data, index) in scores" :key=scores[index].id>
+        <v-card
+          class="mx-auto"
+          max-width="500"
+          outlined
+        >
+          <v-list-item>
+            <v-list-item-content>
+              <v-list-item-title class="text-h5 mb-1">
+                {{data.name}}
+              </v-list-item-title>
+              <v-list-item-title>Getrunkene Biere: {{data.score}}</v-list-item-title>
+              <v-list-item-title>Gespielte Runden: {{data.runden}}</v-list-item-title>
+              <v-list-item-title>BPR: {{data.score / data.runden}}</v-list-item-title>
+            </v-list-item-content>
+          </v-list-item>
+
+          <v-card-actions>
+            <v-row>
+              <v-col>
+              <v-btn
+                outlined
+                rounded
+                text
+                @click="updateScores(data, 1)"
+              >
+                Ein Bier mehr
+              </v-btn>
+              </v-col>
+              <v-col>
+              <v-btn
+                outlined
+                rounded
+                text
+                @click="updateScores(data, -1)"
+              >
+                Ein Bier weniger
+              </v-btn>
+              </v-col>
+            </v-row>
+            <v-row>
+              <v-col>
+              <v-btn
+                outlined
+                rounded
+                text
+                @click="updateRounds(data, 1)"
+              >
+                Ein Runde mehr
+              </v-btn>
+              </v-col>
+              <v-col>
+              <v-btn
+                outlined
+                rounded
+                text
+                @click="updateRounds(data, -1)"
+              >
+                Ein Runde weniger
+              </v-btn>
+              </v-col>
+            </v-row>
+          </v-card-actions>
+        </v-card>
+      </v-col>
+    </v-row>
+  </v-container>
 </template>
 
 <script>
-export default {
-  name: 'HelloWorld',
-  props: {
-    msg: String
-  }
-}
-</script>
+  import { getDocs, query, collection, onSnapshot, doc, updateDoc } from "firebase/firestore"
+  import db from '../firebase/init.js'
 
-<!-- Add "scoped" attribute to limit CSS to this component only -->
-<style scoped>
-h3 {
-  margin: 40px 0 0;
-}
-ul {
-  list-style-type: none;
-  padding: 0;
-}
-li {
-  display: inline-block;
-  margin: 0 10px;
-}
-a {
-  color: #42b983;
-}
-</style>
+  export default {
+    name: 'HelloWorld',
+
+    data: () => ({
+      scores: []
+    }),
+
+    created() {
+      this.getScores()
+      this.updateData()
+    },
+
+    methods: {
+      async getScores() {
+        const querySnap = await getDocs(query(collection(db, 'scores')));
+
+        querySnap.forEach((doc) => {
+          this.scores.push({
+              id: doc.id,
+              ...doc.data()
+            })
+        })
+      },
+      async updateData() {
+        // use 'collection()' instead of 'doc()'
+        onSnapshot(collection(db, 'scores'), (snap) => {
+          snap.forEach((doc) => {
+            this.scores.forEach((item, index) => {
+              if(item.id === doc.id) {
+                this.scores[index].score = doc.data().score
+                this.scores[index].runden = doc.data().runden
+              }
+            })
+          })
+        })
+      },
+      async updateScores(data, number) {
+        await updateDoc(doc(db, 'scores', data.id), {
+          score: data.score + number
+        })
+      },
+      async updateRounds(data, number) {
+        await updateDoc(doc(db, 'scores', data.id), {
+          runden: data.runden + number
+        })
+      }
+    },
+  }
+</script>
